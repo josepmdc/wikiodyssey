@@ -17,7 +17,6 @@ import (
 */
 
 const randomApiURI = "https://en.wikipedia.org/w/api.php?action=query&format=json&list=random&rnnamespace=0"
-const searchTitleURI = "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=%s&utf8=&format=json"
 const articleLinksURI = "https://en.wikipedia.org/w/api.php?action=query&titles=%s&prop=links&pltitles=%s&format=json&pllimit=max&plnamespace=0"
 const searchTitlesURI = "https://en.wikipedia.org/w/rest.php/v1/search/title?q=%s&limit=10"
 
@@ -127,15 +126,4 @@ func IsTitleInArticle(sourceTitle string, targetTitle string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no matching titles found")
-}
-
-func main() {
-	title, err := GetTitles("albert einstein")
-	// title, err := IsTitleInArticle("Albert Einstein", "Ulm")
-
-	if err != nil {
-		fmt.Printf("error: %s", err)
-	}
-	fmt.Println(title)
-
 }
