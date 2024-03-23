@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import React from 'react';
 import { ArcherElement } from 'react-archer';
 
@@ -19,14 +20,23 @@ export default function WordElement(WordElementProps: WordElementProps) {
 
     return (
         <div className='word-container'>
-            <ArcherElement
-                id={WordElementProps.elementId}
-                relations={relations}
+            <motion.div
+                layout
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                transition={{ type: "spring", stiffness: 100, damping: 30 }}
+                
             >
-                <p>
-                    {WordElementProps.content}
-                </p>
-            </ArcherElement>
+                <ArcherElement
+                    id={WordElementProps.elementId}
+                    relations={relations}
+                >
+                    <p>
+                        {WordElementProps.content}
+                    </p>
+                </ArcherElement>
+            </motion.div>
         </div>
     )
 }
