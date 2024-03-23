@@ -17,8 +17,9 @@ import (
 */
 
 const randomApiURI = "https://en.wikipedia.org/w/api.php?action=query&format=json&list=random&rnnamespace=0"
-const searchTitlesURI = "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=%s&utf8=&format=json"
+const searchTitleURI = "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=%s&utf8=&format=json"
 const articleLinksURI = "https://en.wikipedia.org/w/api.php?action=query&titles=%s&prop=links&pltitles=%s&format=json&pllimit=max&plnamespace=0"
+const searchTitlesURI = "https://en.wikipedia.org/w/rest.php/v1/search/title?q=%s&limit=10"
 
 type RandomQuery struct {
 	Query *WikiRandom `json:"query"`
@@ -40,6 +41,9 @@ func GetRandomArticles(n uint) ([]string, error) {
 
 	var randomResp RandomQuery
 	err = json.NewDecoder(resp.Body).Decode(&randomResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get random article")
+	}
 
 	titles := make([]string, n)
 	for i, entry := range randomResp.Query.Random {
@@ -50,42 +54,30 @@ func GetRandomArticles(n uint) ([]string, error) {
 }
 
 type SearchTitleQuery struct {
-	Query *WikiSearch `json:"query"`
+	Pages []*WikiPageObject `json:"pages"`
 }
 
-type WikiSearch struct {
-	SearchInfo struct {
-		TotalHits uint `json:"totalhits"`
-	} `json:"searchinfo"`
-
-	Search []*SearchEntry `json:"search"`
+type WikiPageObject struct {
+	Id          int    `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
-type SearchEntry struct {
-	Title string `json:"title"`
-}
-
-// type SearchInformation struct {
-// 	TotalHits uint `json:"totalhits"`
-// }
-
-func GetTitles(input string) (string, error) {
+func GetTitles(input string) ([]*WikiPageObject, error) {
 	input = strings.ReplaceAll(input, " ", "_")
 	resp, err := http.Get(fmt.Sprintf(searchTitlesURI, input))
 	if err != nil {
-		return "", fmt.Errorf("error fetching random articles: %w", err)
+		return nil, fmt.Errorf("error fetching article title: %w", err)
 	}
 
 	var searchResp SearchTitleQuery
 	err = json.NewDecoder(resp.Body).Decode(&searchResp)
 
-	if searchResp.Query.SearchInfo.TotalHits <= 0 {
-		return "", fmt.Errorf("error fetching random articles: no results found")
+	if err != nil {
+		return nil, fmt.Errorf("error decoding titles: %w", err)
 	}
 
-	title := searchResp.Query.Search[0].Title
-
-	return title, nil
+	return searchResp.Pages, nil
 }
 
 type CheckerQuery struct {
@@ -104,7 +96,7 @@ func IsTitleInArticle(sourceTitle string, targetTitle string) (string, error) {
 	sourceTitle = strings.ReplaceAll(sourceTitle, " ", "_")
 	originalTargetTitle := targetTitle
 	targetTitle = strings.ReplaceAll(targetTitle, " ", "_")
-	resp, err := http.Get(fmt.Sprintf(articleLinksURI, sourceTitle, targetTitle)) //replace spaces?
+	resp, err := http.Get(fmt.Sprintf(articleLinksURI, sourceTitle, targetTitle))
 
 	if err != nil {
 		return "", fmt.Errorf("error fetching random articles: %w", err)
@@ -112,6 +104,9 @@ func IsTitleInArticle(sourceTitle string, targetTitle string) (string, error) {
 
 	var checkerQuery CheckerQuery
 	err = json.NewDecoder(resp.Body).Decode(&checkerQuery)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode JSON: %w", err)
+	}
 
 	links := make([]*CheckerEntry, 1)
 
@@ -135,11 +130,11 @@ func IsTitleInArticle(sourceTitle string, targetTitle string) (string, error) {
 }
 
 func main() {
-	// title, _ := GetTitles("albert einstein")
-	title, err := IsTitleInArticle("Albert einstein", "ulm")
+	title, err := GetTitles("albert einstein")
+	// title, err := IsTitleInArticle("Albert Einstein", "Ulm")
 
 	if err != nil {
-		fmt.Printf("error: %w", err)
+		fmt.Printf("error: %s", err)
 	}
 	fmt.Println(title)
 
