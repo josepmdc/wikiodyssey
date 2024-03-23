@@ -1,0 +1,60 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Wikiodyssey
+  description: Description
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://wikiodyssey.swagger.io/v2
+
+paths:
+  /articles/random:
+    get:
+      description: Get random articles
+      parameters:
+        - name: limit
+          in: query
+          description: number of random articles to return
+          required: false
+          schema:
+            type: integer
+            format: uint
+      responses:
+        '200':
+          description: random article response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RandomArticlesResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    RandomArticlesResponse:
+      required: [ articles ]
+      properties:
+        articles:
+          type: array
+          items:
+            type: string
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
