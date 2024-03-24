@@ -1,44 +1,62 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArcherContainer } from 'react-archer';
 import './App.css';
 import WordElement from './components/WordElement'
 import { AnimatePresence } from 'framer-motion';
+import InputWithDropdown from './components/InputWithDropdown';
+import { getRandomArticles } from './api/wikiodyssey-api';
 
 function App() {
-  let startingWord = "Banana"
-  let endingWord = "Chemistry"
-
   const [wordChain, setWordChain] = useState<string[]>([]);
 
-  const keyDown = (event: any) => {
-    if (event.key === 'Enter' && event.target.value !== '') {
-      setWordChain(prevChain => [...prevChain, event.currentTarget.value])
-      event.target.value = ''
-    }
+  const [initialWords, setInitialWords] = useState({
+    startingWord: "",
+    endingWord: ""
+  })
+
+  const addWordToChain = (word: string) => {
+    setWordChain(prevChain => [...prevChain, word])
   }
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const res = await getRandomArticles(2);
+      if(res.articles.length > 1){
+        setInitialWords({
+          startingWord: res.articles[0],
+          endingWord: res.articles[1]
+        })
+      }
+    };
   
+    fetchData();
+  }, [])
+  
+  const {startingWord, endingWord} = initialWords
+
   return (
     <div className="App">
       <header className="App-header">
         <ArcherContainer strokeColor='white' offset={10} key={wordChain.length}>
           <div className='words-container'>
             <AnimatePresence>
-              <WordElement key={`initialWord-${new Date().getTime()}`} content={startingWord} targetId={wordChain.length === 0 ? 'middleWord' : `word0`} elementId='startingWordElement'></WordElement>
+              <WordElement key={`initialWord`} content={startingWord} targetId={wordChain.length === 0 ? 'middleWord' : `word0`} elementId='startingWordElement'></WordElement>
 
               {wordChain.map((word: string, index) => (
                 <WordElement
-                  key={`${word}-${index}-${new Date().getTime()}`}
+                  key={`${word}-${index}`}
                   content={word}
                   targetId={index === wordChain.length - 1 ? 'middleWord' : `word${index + 1}`}
                   elementId={`word${index}`}></WordElement>
               ))}
 
-              <WordElement key={`middleWord-${new Date().getTime()}`} content='...' targetId='endingWordElement' elementId='middleWord'></WordElement>
-              <WordElement key={`endingWord-${new Date().getTime()}`} content={endingWord} elementId='endingWordElement'></WordElement>
+              <WordElement key={`middleWord`} content='...' targetId='endingWordElement' elementId='middleWord'></WordElement>
+              <WordElement key={`endingWord`} content={endingWord} elementId='endingWordElement'></WordElement>
             </AnimatePresence>
           </div>
         </ArcherContainer>
-        <input className='guessInput' placeholder='Type your guess...' onKeyDown={keyDown}></input>
+        
+        <InputWithDropdown inputSelectedCallback={addWordToChain}></InputWithDropdown>
       </header>
     </div>
   );
