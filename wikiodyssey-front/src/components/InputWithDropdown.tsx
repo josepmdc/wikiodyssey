@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import AsyncSelect from 'react-select';
+import AsyncSelect from 'react-select/async';
+import { getTitleSuggestions } from '../api/wikiodyssey-api';
 
 const customStyles = {
     control: (provided: any, state: { isFocused: any; }) => ({
@@ -26,24 +27,44 @@ interface InputWithDropdownProps {
     inputSelectedCallback: Function
 }
 
+interface GetTitleSuggestionsResponse{
+    titles: {
+        description: string
+        title: string
+        id: number
+    }[]
+}
+
+
+
 const InputWithDropdown = (inputWithDropdownProps: InputWithDropdownProps) => {
     const [selectedOption, setSelectedOption] = useState(null);
-    const [options, setOptions] = useState([
-        { value: 'apple', label: 'Apple' },
-        { value: 'banana', label: 'Banana' },
-        { value: 'orange', label: 'Orange' }
-    ]);
 
     const handleChange = (selectedOption: any) => {
-        if (selectedOption)
+        console.log("Handle change triggered")
+        if (selectedOption){
             inputWithDropdownProps.inputSelectedCallback(selectedOption.label)
+            setSelectedOption(null)
+        }
     };
+
+    const loadOptions = (inputValue: string, callback: any) => {
+        console.log("newValue: ", inputValue)
+        if(inputValue.length > 0){
+            
+            var response = getTitleSuggestions(inputValue)
+            return response
+            callback(response)
+        }
+    }
 
     return (
         <AsyncSelect className='guessInput'
             value={selectedOption}
             onChange={handleChange}
-            options={options}
+            loadOptions={loadOptions}
+            // onInputChange={handleInputChange}
+            // options={options}
             isClearable
             placeholder="Type your guess..."
         //   styles={customStyles}
