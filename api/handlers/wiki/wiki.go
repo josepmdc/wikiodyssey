@@ -2,10 +2,11 @@ package wiki
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/josepmdc/wikiodyssey/api/server"
 	"github.com/josepmdc/wikiodyssey/api/services/wiki"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 type Handler struct {
@@ -30,4 +31,25 @@ func (h *Handler) GetArticlesRandom(e echo.Context, req server.GetArticlesRandom
 	}
 
 	return e.JSON(http.StatusOK, server.RandomArticlesResponse{Articles: articles})
+}
+
+func (h *Handler) GetArticlesTitles(e echo.Context, req server.GetArticlesTitlesParams) error {
+
+	rawTitles, err := h.wikiService.GetTitles(req.Input)
+
+	if err != nil {
+		return fmt.Errorf("error getting titles: %w", err)
+	}
+
+	var titles []server.WikiPageObject
+
+	for _, title := range rawTitles {
+		titles = append(titles, server.WikiPageObject{
+			Id:          title.Id,
+			Title:       title.Title,
+			Description: &title.Description,
+		})
+	}
+
+	return e.JSON(http.StatusOK, server.GetTitlesResponse{Titles: titles})
 }

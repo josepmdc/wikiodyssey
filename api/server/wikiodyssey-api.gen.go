@@ -27,15 +27,33 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// GetTitlesResponse defines model for GetTitlesResponse.
+type GetTitlesResponse struct {
+	Titles []WikiPageObject `json:"titles"`
+}
+
 // RandomArticlesResponse defines model for RandomArticlesResponse.
 type RandomArticlesResponse struct {
 	Articles []string `json:"articles"`
+}
+
+// WikiPageObject defines model for WikiPageObject.
+type WikiPageObject struct {
+	Description *string `json:"description,omitempty"`
+	Id          int     `json:"id"`
+	Title       string  `json:"title"`
 }
 
 // GetArticlesRandomParams defines parameters for GetArticlesRandom.
 type GetArticlesRandomParams struct {
 	// Limit number of random articles to return
 	Limit *uint `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetArticlesTitlesParams defines parameters for GetArticlesTitles.
+type GetArticlesTitlesParams struct {
+	// Input where to get titles from
+	Input string `form:"input" json:"input"`
 }
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
@@ -113,10 +131,25 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 type ClientInterface interface {
 	// GetArticlesRandom request
 	GetArticlesRandom(ctx context.Context, params *GetArticlesRandomParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetArticlesTitles request
+	GetArticlesTitles(ctx context.Context, params *GetArticlesTitlesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetArticlesRandom(ctx context.Context, params *GetArticlesRandomParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetArticlesRandomRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetArticlesTitles(ctx context.Context, params *GetArticlesTitlesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetArticlesTitlesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -176,6 +209,51 @@ func NewGetArticlesRandomRequest(server string, params *GetArticlesRandomParams)
 	return req, nil
 }
 
+// NewGetArticlesTitlesRequest generates requests for GetArticlesTitles
+func NewGetArticlesTitlesRequest(server string, params *GetArticlesTitlesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/articles/titles")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "input", runtime.ParamLocationQuery, params.Input); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -221,6 +299,9 @@ func WithBaseURL(baseURL string) ClientOption {
 type ClientWithResponsesInterface interface {
 	// GetArticlesRandomWithResponse request
 	GetArticlesRandomWithResponse(ctx context.Context, params *GetArticlesRandomParams, reqEditors ...RequestEditorFn) (*GetArticlesRandomResponse, error)
+
+	// GetArticlesTitlesWithResponse request
+	GetArticlesTitlesWithResponse(ctx context.Context, params *GetArticlesTitlesParams, reqEditors ...RequestEditorFn) (*GetArticlesTitlesResponse, error)
 }
 
 type GetArticlesRandomResponse struct {
@@ -246,6 +327,29 @@ func (r GetArticlesRandomResponse) StatusCode() int {
 	return 0
 }
 
+type GetArticlesTitlesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]GetTitlesResponse
+	JSONDefault  *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r GetArticlesTitlesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetArticlesTitlesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // GetArticlesRandomWithResponse request returning *GetArticlesRandomResponse
 func (c *ClientWithResponses) GetArticlesRandomWithResponse(ctx context.Context, params *GetArticlesRandomParams, reqEditors ...RequestEditorFn) (*GetArticlesRandomResponse, error) {
 	rsp, err := c.GetArticlesRandom(ctx, params, reqEditors...)
@@ -253,6 +357,15 @@ func (c *ClientWithResponses) GetArticlesRandomWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetArticlesRandomResponse(rsp)
+}
+
+// GetArticlesTitlesWithResponse request returning *GetArticlesTitlesResponse
+func (c *ClientWithResponses) GetArticlesTitlesWithResponse(ctx context.Context, params *GetArticlesTitlesParams, reqEditors ...RequestEditorFn) (*GetArticlesTitlesResponse, error) {
+	rsp, err := c.GetArticlesTitles(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetArticlesTitlesResponse(rsp)
 }
 
 // ParseGetArticlesRandomResponse parses an HTTP response from a GetArticlesRandomWithResponse call
@@ -288,11 +401,47 @@ func ParseGetArticlesRandomResponse(rsp *http.Response) (*GetArticlesRandomRespo
 	return response, nil
 }
 
+// ParseGetArticlesTitlesResponse parses an HTTP response from a GetArticlesTitlesWithResponse call
+func ParseGetArticlesTitlesResponse(rsp *http.Response) (*GetArticlesTitlesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetArticlesTitlesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []GetTitlesResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
 	// (GET /articles/random)
 	GetArticlesRandom(ctx echo.Context, params GetArticlesRandomParams) error
+
+	// (GET /articles/titles)
+	GetArticlesTitles(ctx echo.Context, params GetArticlesTitlesParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -315,6 +464,24 @@ func (w *ServerInterfaceWrapper) GetArticlesRandom(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetArticlesRandom(ctx, params)
+	return err
+}
+
+// GetArticlesTitles converts echo context to params.
+func (w *ServerInterfaceWrapper) GetArticlesTitles(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetArticlesTitlesParams
+	// ------------- Required query parameter "input" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "input", ctx.QueryParams(), &params.Input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter input: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetArticlesTitles(ctx, params)
 	return err
 }
 
@@ -347,21 +514,24 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.GET(baseURL+"/articles/random", wrapper.GetArticlesRandom)
+	router.GET(baseURL+"/articles/titles", wrapper.GetArticlesTitles)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/5RTPW/bMBT8K8JrR1VUnU1b0BpFgKJDOnQIPDDSs/xS8SOPT3YNQ/+9ICXLju0WyCSK",
-	"PB7vjscD1M54Z9FKgOoAod6g0Wm4ZHYcB56dRxbCNF27BuN37dhogQrIyt0CcpC9x/EXW2QYcjAYgm4T",
-	"eloMwmRbGIYcGF97Ymygeho5T/jVTOaeX7CWyPWobePMPQvVHYZHDN7ZgNfy9ISIYxI04cbpM71m1vsr",
-	"NTPFaohLZNcukjQYaiYv5CxU8PXsL4eOapzkWG0i9b3X9QazRVFCDj13UMFGxIdKqd1uV+i0XDhu1bQ3",
-	"qO8PX5Y/fi4/LYqy2IjpklCSLtL9ot/kmn0IuIcctshhlPG5KIsyAp1Hqz1BBXdpKgevZZPcq6MhxSnE",
-	"ONeiXHv6hpKNkGzOIDGzjoiHZsTMlzCyxZNYGxTkANXTJantzTNy5taX1Jm4jFF6jgFShL72yNHeFGFH",
-	"hgTyqZNvOteTlRuVG1bxJsdqJOuLshw7awVtcqy976hOftRLiAoPZwfMjfnIuIYKPqjT81DT21D/qOJ1",
-	"rYb8Iou3CWR8trXBte47eZfa/4kcX+8NDb3FPx5rwSbDIyaiAvL2eIMXfT11rwg73bbIBTm1XcCwGv4G",
-	"AAD//0sUDuNBBAAA",
+	"H4sIAAAAAAAC/8RUwW7bMAz9FYPbUbOz9OZbsRVFgWEbugI7FDmoNuOosyWVopsFhf99kKzErp2m3WU7",
+	"RZGeH/nIRz5BYRprNGp2kD+BKzbYyHC8IDLkD5aMRWKF4bowJfrftaFGMuSgNJ8tQQDvLPZ/sUKCTkCD",
+	"zskqoOOjY1K6gq4TQPjQKsIS8tuec8CvDmTm7h4L9lyXyDeKa3TX6KzRDueZcXj3J8XYhMN7wjXk8C4b",
+	"VGZRYvZT/VLfZYXfDjFiUEkkd7McI/uqE3AtdWmac2JVnExIRsSzlCaVeCXqgcLHnWQ8i1eiK0hZVkYf",
+	"jaTK0fWoT0Ha611SJeyxq84/Kr02s7jwefRPQK0KjMXRsvHs51YWG0yW6QIEtFRDDhtm6/Is2263qQzP",
+	"qaEqi9+67MvVp4uvPy4+LNNFuuGmHiUdimLKnXO4AwGPSK5P42O6SBceaCxqaRXkcBauBFjJm1CwbF/e",
+	"jEJL/V2FPNd0iZz0kOTQkcBM0iOuyh5zsETP5iORbJCRHOS3U1LdNndIiVlPqRM2CSG35AuoPPShRfLy",
+	"Yglr1SgGEaf12TS2SvORYexWvpe9UYP05WLRT7Nm1EGxtLZWRdCT3bveQkOAN43UC4MxN3knJrV4XoGE",
+	"Rp+WuJZtzX+V7akk+712JIdW42+LBWOZ4B7TiZFJhgXzokki5IQ3bvaIk97YbpDQ+6A6kCZrCp46Zgil",
+	"bevbPowrU4tHDRKHW8yG/Z84ZL7G32COqJ+wlr45bJJe7383RyfAIT3uWzhZZsNiSt1WVhVSqkz2uIRu",
+	"1f0JAAD//8E43U54BwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

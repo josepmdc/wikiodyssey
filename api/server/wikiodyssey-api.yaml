@@ -36,6 +36,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /articles/titles:
+    get:
+      description: Get titles
+      parameters:
+        - name: input
+          in: query
+          description: where to get titles from
+          required: true
+          schema:
+            type: string
+            format: string
+      responses:
+        '200':
+          description: titles related to input
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GetTitlesResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
@@ -46,6 +72,25 @@ components:
           type: array
           items:
             type: string
+
+    GetTitlesResponse:
+      required: [ titles ]
+      properties:
+        titles:
+          type: array
+          items:
+            $ref: '#/components/schemas/WikiPageObject'
+
+    WikiPageObject:
+      required: [ id, title ]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        
 
     Error:
       type: object
