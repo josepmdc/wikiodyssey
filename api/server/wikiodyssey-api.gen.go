@@ -41,7 +41,17 @@ type RandomArticlesResponse struct {
 type WikiPageObject struct {
 	Description *string `json:"description,omitempty"`
 	Id          int     `json:"id"`
+	Key         string  `json:"key"`
 	Title       string  `json:"title"`
+}
+
+// GetArticlesIsTitleInArticleParams defines parameters for GetArticlesIsTitleInArticle.
+type GetArticlesIsTitleInArticleParams struct {
+	// SourceTitle where to check if title is in
+	SourceTitle string `form:"sourceTitle" json:"sourceTitle"`
+
+	// TargetTitle to check
+	TargetTitle string `form:"targetTitle" json:"targetTitle"`
 }
 
 // GetArticlesRandomParams defines parameters for GetArticlesRandom.
@@ -129,11 +139,26 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetArticlesIsTitleInArticle request
+	GetArticlesIsTitleInArticle(ctx context.Context, params *GetArticlesIsTitleInArticleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetArticlesRandom request
 	GetArticlesRandom(ctx context.Context, params *GetArticlesRandomParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetArticlesTitles request
 	GetArticlesTitles(ctx context.Context, params *GetArticlesTitlesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetArticlesIsTitleInArticle(ctx context.Context, params *GetArticlesIsTitleInArticleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetArticlesIsTitleInArticleRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetArticlesRandom(ctx context.Context, params *GetArticlesRandomParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -158,6 +183,63 @@ func (c *Client) GetArticlesTitles(ctx context.Context, params *GetArticlesTitle
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetArticlesIsTitleInArticleRequest generates requests for GetArticlesIsTitleInArticle
+func NewGetArticlesIsTitleInArticleRequest(server string, params *GetArticlesIsTitleInArticleParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/articles/IsTitleInArticle")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sourceTitle", runtime.ParamLocationQuery, params.SourceTitle); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "targetTitle", runtime.ParamLocationQuery, params.TargetTitle); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetArticlesRandomRequest generates requests for GetArticlesRandom
@@ -297,11 +379,37 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetArticlesIsTitleInArticleWithResponse request
+	GetArticlesIsTitleInArticleWithResponse(ctx context.Context, params *GetArticlesIsTitleInArticleParams, reqEditors ...RequestEditorFn) (*GetArticlesIsTitleInArticleResponse, error)
+
 	// GetArticlesRandomWithResponse request
 	GetArticlesRandomWithResponse(ctx context.Context, params *GetArticlesRandomParams, reqEditors ...RequestEditorFn) (*GetArticlesRandomResponse, error)
 
 	// GetArticlesTitlesWithResponse request
 	GetArticlesTitlesWithResponse(ctx context.Context, params *GetArticlesTitlesParams, reqEditors ...RequestEditorFn) (*GetArticlesTitlesResponse, error)
+}
+
+type GetArticlesIsTitleInArticleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *string
+	JSONDefault  *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r GetArticlesIsTitleInArticleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetArticlesIsTitleInArticleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetArticlesRandomResponse struct {
@@ -350,6 +458,15 @@ func (r GetArticlesTitlesResponse) StatusCode() int {
 	return 0
 }
 
+// GetArticlesIsTitleInArticleWithResponse request returning *GetArticlesIsTitleInArticleResponse
+func (c *ClientWithResponses) GetArticlesIsTitleInArticleWithResponse(ctx context.Context, params *GetArticlesIsTitleInArticleParams, reqEditors ...RequestEditorFn) (*GetArticlesIsTitleInArticleResponse, error) {
+	rsp, err := c.GetArticlesIsTitleInArticle(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetArticlesIsTitleInArticleResponse(rsp)
+}
+
 // GetArticlesRandomWithResponse request returning *GetArticlesRandomResponse
 func (c *ClientWithResponses) GetArticlesRandomWithResponse(ctx context.Context, params *GetArticlesRandomParams, reqEditors ...RequestEditorFn) (*GetArticlesRandomResponse, error) {
 	rsp, err := c.GetArticlesRandom(ctx, params, reqEditors...)
@@ -366,6 +483,39 @@ func (c *ClientWithResponses) GetArticlesTitlesWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetArticlesTitlesResponse(rsp)
+}
+
+// ParseGetArticlesIsTitleInArticleResponse parses an HTTP response from a GetArticlesIsTitleInArticleWithResponse call
+func ParseGetArticlesIsTitleInArticleResponse(rsp *http.Response) (*GetArticlesIsTitleInArticleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetArticlesIsTitleInArticleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetArticlesRandomResponse parses an HTTP response from a GetArticlesRandomWithResponse call
@@ -437,6 +587,9 @@ func ParseGetArticlesTitlesResponse(rsp *http.Response) (*GetArticlesTitlesRespo
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (GET /articles/IsTitleInArticle)
+	GetArticlesIsTitleInArticle(ctx echo.Context, params GetArticlesIsTitleInArticleParams) error
+
 	// (GET /articles/random)
 	GetArticlesRandom(ctx echo.Context, params GetArticlesRandomParams) error
 
@@ -447,6 +600,31 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetArticlesIsTitleInArticle converts echo context to params.
+func (w *ServerInterfaceWrapper) GetArticlesIsTitleInArticle(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetArticlesIsTitleInArticleParams
+	// ------------- Required query parameter "sourceTitle" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "sourceTitle", ctx.QueryParams(), &params.SourceTitle)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sourceTitle: %s", err))
+	}
+
+	// ------------- Required query parameter "targetTitle" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "targetTitle", ctx.QueryParams(), &params.TargetTitle)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter targetTitle: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetArticlesIsTitleInArticle(ctx, params)
+	return err
 }
 
 // GetArticlesRandom converts echo context to params.
@@ -513,6 +691,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/articles/IsTitleInArticle", wrapper.GetArticlesIsTitleInArticle)
 	router.GET(baseURL+"/articles/random", wrapper.GetArticlesRandom)
 	router.GET(baseURL+"/articles/titles", wrapper.GetArticlesTitles)
 
@@ -521,17 +700,18 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8RUwW7bMAz9FYPbUbOz9OZbsRVFgWEbugI7FDmoNuOosyWVopsFhf99kKzErp2m3WU7",
-	"RZGeH/nIRz5BYRprNGp2kD+BKzbYyHC8IDLkD5aMRWKF4bowJfrftaFGMuSgNJ8tQQDvLPZ/sUKCTkCD",
-	"zskqoOOjY1K6gq4TQPjQKsIS8tuec8CvDmTm7h4L9lyXyDeKa3TX6KzRDueZcXj3J8XYhMN7wjXk8C4b",
-	"VGZRYvZT/VLfZYXfDjFiUEkkd7McI/uqE3AtdWmac2JVnExIRsSzlCaVeCXqgcLHnWQ8i1eiK0hZVkYf",
-	"jaTK0fWoT0Ha611SJeyxq84/Kr02s7jwefRPQK0KjMXRsvHs51YWG0yW6QIEtFRDDhtm6/Is2263qQzP",
-	"qaEqi9+67MvVp4uvPy4+LNNFuuGmHiUdimLKnXO4AwGPSK5P42O6SBceaCxqaRXkcBauBFjJm1CwbF/e",
-	"jEJL/V2FPNd0iZz0kOTQkcBM0iOuyh5zsETP5iORbJCRHOS3U1LdNndIiVlPqRM2CSG35AuoPPShRfLy",
-	"Yglr1SgGEaf12TS2SvORYexWvpe9UYP05WLRT7Nm1EGxtLZWRdCT3bveQkOAN43UC4MxN3knJrV4XoGE",
-	"Rp+WuJZtzX+V7akk+712JIdW42+LBWOZ4B7TiZFJhgXzokki5IQ3bvaIk97YbpDQ+6A6kCZrCp46Zgil",
-	"bevbPowrU4tHDRKHW8yG/Z84ZL7G32COqJ+wlr45bJJe7383RyfAIT3uWzhZZsNiSt1WVhVSqkz2uIRu",
-	"1f0JAAD//8E43U54BwAA",
+	"H4sIAAAAAAAC/8xWTW/bOBD9K8TsHrWS17npFmSDwMCiLdIAPQQ+MNJYZiKRzHAU1wj03wtS9Eck23GR",
+	"Q3oKLQ7nvZn3OMwrFKaxRqNmB/kruGKJjQzLayJDfmHJWCRWGD4XpkT/d2GokQw5KM0XU0iA1xb7n1gh",
+	"QZdAg87JKkTHTcekdAVdlwDhc6sIS8jv+5y7+Pk2mXl4xIJ9rhvkO8U1ult01miHY2Yc9v1KMTZh8Tfh",
+	"AnL4K9tVmcUSsx/qSX2TFX7dYkRQSSTXI44x+7xL4Fbq0jSXxKo4SUjGiDeUBp14B3WbwuMOGI/wSnQF",
+	"KcvK6INIqtz7vKfTE64PM/Mlv6+eKmET2+eadz5E6YUZsYL/9n4lUKsCY+u0bDzGpZXFEsU0nUACLdWQ",
+	"w5LZujzLVqtVKsN2aqjK4lmX/T+7uv7y/fqfaTpJl9zUe9RDy0y5dg7XkMALkutp/JtO0okPNBa1tApy",
+	"uAifErCSl6Gd2ab52cwF78101NzvVsjj6q6WWDw5oRYiEBDKCaVFzAMBjaSPnZWQe09vTDRC8DxINshI",
+	"DvL7IdBqiYSCjSg84gAQfPMhh+cWyZcdW+tMSwXeRaF2CjK1mMSb/+ZmR72Tsf5DOhsiR5BZUhXv7weR",
+	"5/54f9+CRtPJpB9KmlEHQaS1tSpCk7NH19+EHcIwX5cMKvGd3LGNAu53LpxYyLbm3wI+NYn6SXuATKvx",
+	"p8WCsRS4iemSPWNSmERH7XiDLPoQsR0kJ0zYz7X3rKfb5gFJmMUwtbcjIbd0zIC1ahTDQcFbpfnAG/Jh",
+	"vc96CY7M8/FsHgn0tgOC9o7+OSbZvYtHTRJDTnjjbhNx3liqtknFgoKnDhlCadvyJ0+Esxwy/u/jDHPE",
+	"+glr6cVhI/p6P90cXQIO6WUj4eCV3b2YqVvJqkJKlcleptDNu18BAAD//9yS/ZEvCgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

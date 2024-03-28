@@ -62,7 +62,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+  /articles/IsTitleInArticle:
+    get:
+      description: Checks if title is in article
+      parameters:
+        - name: sourceTitle
+          in: query
+          description: where to check if title is in
+          required: true
+          schema:
+            type: string
+            format: string
+        - name: targetTitle
+          in: query
+          description: to check
+          required: true
+          schema:
+            type: string
+            format: string
+      responses:
+        '200':
+          description: if targetTitle is in sourceTitle
+          content:
+            application/json:
+              schema:
+                type: string
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     RandomArticlesResponse:
@@ -82,13 +112,15 @@ components:
             $ref: '#/components/schemas/WikiPageObject'
 
     WikiPageObject:
-      required: [ id, title ]
+      required: [ id, title, key ]
       properties:
         id:
           type: integer
         title:
           type: string
         description:
+          type: string
+        key:
           type: string
         
 

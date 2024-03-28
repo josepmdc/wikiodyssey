@@ -48,8 +48,20 @@ func (h *Handler) GetArticlesTitles(e echo.Context, req server.GetArticlesTitles
 			Id:          title.Id,
 			Title:       title.Title,
 			Description: &title.Description,
+			Key:         title.Key,
 		})
 	}
 
 	return e.JSON(http.StatusOK, server.GetTitlesResponse{Titles: titles})
+}
+
+func (h *Handler) GetArticlesIsTitleInArticle(e echo.Context, req server.GetArticlesIsTitleInArticleParams) error {
+	fmt.Printf("sourceTitle: %s | targetTitle: %s\n", req.SourceTitle, req.TargetTitle)
+	isInArticle, err := h.wikiService.IsTitleInArticle(req.SourceTitle, req.TargetTitle)
+
+	if err != nil {
+		return fmt.Errorf("error checking if title is in article: %w", err)
+	}
+
+	return e.JSON(http.StatusOK, isInArticle)
 }

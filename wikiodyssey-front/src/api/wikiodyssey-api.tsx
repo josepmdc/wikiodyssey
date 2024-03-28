@@ -9,6 +9,7 @@ interface GetTitleSuggestionsResponse{
         description: string
         title: string
         id: number
+        key: string
     }[]
 }
 
@@ -33,7 +34,7 @@ function convertTitlesToOptions(response: GetTitleSuggestionsResponse): any{
     var titles: Option[] = []
     response.titles.forEach((element) => {
         titles.push({
-            value: element.title,
+            value: element.key,
             label: element.title
         })
     });
@@ -41,7 +42,7 @@ function convertTitlesToOptions(response: GetTitleSuggestionsResponse): any{
     return titles
 }
 
-const getTitleSuggestions = async(input: string) : Promise<Option[]> => {
+const getTitleSuggestions = async (input: string) : Promise<Option[]> => {
     var response = await fetch(`${apiURL}/articles/titles?input=${input}`);
 
     if(!response.ok){
@@ -53,5 +54,17 @@ const getTitleSuggestions = async(input: string) : Promise<Option[]> => {
     return convertTitlesToOptions(result);
 }
 
+const getIsTitleInArticle = async (sourceTitle: string, targetTitle: string) : Promise<string> => {
+    var response = await fetch(`${apiURL}/articles/IsTitleInArticle?sourceTitle=${sourceTitle}&targetTitle=${targetTitle}`);
 
-export {getRandomArticles, getTitleSuggestions}
+    if(!response.ok){
+        throw new Error("Is title in article fetching wasn't ok");
+    }
+
+    const result: string = await response.json();
+    
+    return result;
+}
+
+
+export {getRandomArticles, getTitleSuggestions, getIsTitleInArticle}

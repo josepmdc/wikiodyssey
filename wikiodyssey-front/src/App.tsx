@@ -8,6 +8,7 @@ import { getRandomArticles } from './api/wikiodyssey-api';
 
 function App() {
   const [wordChain, setWordChain] = useState<string[]>([]);
+  const [attempts, setAttempts] = useState<number>(0)
 
   const [initialWords, setInitialWords] = useState({
     startingWord: "",
@@ -18,6 +19,10 @@ function App() {
     setWordChain(prevChain => [...prevChain, word])
   }
 
+  const addAttempt = () => {
+    setAttempts(attempts+1)
+  }
+  
   useEffect(() => {
     const fetchData = async () => {
       const res = await getRandomArticles(2);
@@ -56,7 +61,14 @@ function App() {
           </div>
         </ArcherContainer>
         
-        <InputWithDropdown inputSelectedCallback={addWordToChain}></InputWithDropdown>
+        <InputWithDropdown inputSelectedCallback={addWordToChain} 
+                           currentArticleTitle={wordChain.length > 0 ? wordChain[wordChain.length-1] : startingWord}
+                           failedAttemptCallback={addAttempt}
+                           />
+
+        <div>
+          <p>Attempts: {attempts}</p>
+        </div>
       </header>
     </div>
   );

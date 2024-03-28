@@ -27,3 +27,13 @@ func (svc *Service) GetTitles(input string) ([]*wiki.WikiPageObject, error) {
 	}
 	return pages, nil
 }
+
+func (svc *Service) IsTitleInArticle(sourceTitle string, targetTitle string) (string, error) {
+	nextTitle, err := wiki.IsTitleInArticle(sourceTitle, targetTitle)
+
+	if err != nil {
+		return "", fmt.Errorf("failed checking if target title '%s' is in '%s' article: %w", sourceTitle, targetTitle, err)
+	}
+
+	return nextTitle, nil
+}

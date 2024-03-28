@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AsyncSelect from 'react-select/async';
-import { getTitleSuggestions } from '../api/wikiodyssey-api';
+import { getIsTitleInArticle, getTitleSuggestions } from '../api/wikiodyssey-api';
 
 const customStyles = {
     control: (provided: any, state: { isFocused: any; }) => ({
@@ -25,6 +25,8 @@ const customStyles = {
 
 interface InputWithDropdownProps {
     inputSelectedCallback: Function
+    currentArticleTitle: string
+    failedAttemptCallback: Function
 }
 
 interface GetTitleSuggestionsResponse{
@@ -40,21 +42,27 @@ interface GetTitleSuggestionsResponse{
 const InputWithDropdown = (inputWithDropdownProps: InputWithDropdownProps) => {
     const [selectedOption, setSelectedOption] = useState(null);
 
-    const handleChange = (selectedOption: any) => {
-        console.log("Handle change triggered")
+    const handleChange = async (selectedOption: any) => {
         if (selectedOption){
-            inputWithDropdownProps.inputSelectedCallback(selectedOption.label)
             setSelectedOption(null)
+            console.log("Current article title is: ", inputWithDropdownProps.currentArticleTitle)
+
+            try{
+                const response = await getIsTitleInArticle(inputWithDropdownProps.currentArticleTitle, selectedOption.value)
+                console.log("Response: ", response)
+                inputWithDropdownProps.inputSelectedCallback(selectedOption.label)
+            }catch(exception){
+                console.log(exception)
+                inputWithDropdownProps.failedAttemptCallback()
+            }
+
         }
     };
 
     const loadOptions = (inputValue: string, callback: any) => {
-        console.log("newValue: ", inputValue)
         if(inputValue.length > 0){
-            
             var response = getTitleSuggestions(inputValue)
             return response
-            callback(response)
         }
     }
 

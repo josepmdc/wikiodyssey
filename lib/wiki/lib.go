@@ -60,6 +60,7 @@ type WikiPageObject struct {
 	Id          int    `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Key         string `json:"key"`
 }
 
 func GetTitles(input string) ([]*WikiPageObject, error) {
